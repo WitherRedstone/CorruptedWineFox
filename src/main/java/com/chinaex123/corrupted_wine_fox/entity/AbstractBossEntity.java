@@ -42,6 +42,7 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
     protected static final RawAnimation SWIM_ANIMATION = RawAnimation.begin().thenLoop("swim");
     protected static final RawAnimation SWIM_STAND_ANIMATION = RawAnimation.begin().thenLoop("swim_stand");
     protected static final RawAnimation ATTACKED_ANIMATION = RawAnimation.begin().thenPlay("attacked");
+    protected static final RawAnimation CAST_ANIMATION = RawAnimation.begin().thenPlayAndHold("cast");
     protected static final RawAnimation DEATH_ANIMATION = RawAnimation.begin().thenPlayAndHold("death");
 
     /** 出场动画持续 tick */
@@ -54,6 +55,7 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
     protected final AnimationController<AbstractBossEntity> spawnController;
     protected final AnimationController<AbstractBossEntity> locomotionController;
     protected final AnimationController<AbstractBossEntity> hurtController;
+    protected final AnimationController<AbstractBossEntity> castController;
     protected final AnimationController<AbstractBossEntity> deathController;
     protected int phaseTransitionTimer;
     private int spawnTimer;
@@ -72,6 +74,7 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
         this.spawnController.setAnimationSpeed(1.0D);
         this.locomotionController = new AnimationController<>(this, "locomotion", 5, this::locomotionPredicate);
         this.hurtController = new AnimationController<>(this, "hurt", 2, this::hurtPredicate);
+        this.castController = new AnimationController<>(this, "cast", 2, this::castPredicate);
         this.deathController = new AnimationController<>(this, "death", 0, this::deathPredicate);
 
         if (!level.isClientSide) {
@@ -96,7 +99,7 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         super.registerControllers(controllers);
-        controllers.add(this.locomotionController, this.hurtController, this.meleeController,
+        controllers.add(this.locomotionController, this.castController, this.hurtController, this.meleeController,
                 this.transitionController, this.spawnController, this.deathController);
     }
 
@@ -127,6 +130,17 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
         }
         if (this.hurtTime > 0) {
             return state.setAndContinue(ATTACKED_ANIMATION);
+        }
+        return PlayState.STOP;
+    }
+
+    private PlayState castPredicate(AnimationState<AbstractBossEntity> state) {
+        if (this.isDeadOrDying() || this.getSpawnTimer() > 0
+                || this.getPhase() == Phases.Transitioning.ordinal()) {
+            return PlayState.STOP;
+        }
+        if (this.isCasting()) {
+            return state.setAndContinue(CAST_ANIMATION);
         }
         return PlayState.STOP;
     }
@@ -349,10 +363,14 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
         }
     }
 
+    protected boolean shouldApplyDamageCap() {
+        return true;
+    }
+
     @Override
     protected float getDamageAfterArmorAbsorb(DamageSource source, float damage) {
         float result = super.getDamageAfterArmorAbsorb(source, damage);
-        if (CWFConfig.ENABLE_DAMAGE_CAP.get() && !ignoresBossProtection(source)) {
+        if (CWFConfig.ENABLE_DAMAGE_CAP.get() && this.shouldApplyDamageCap() && !ignoresBossProtection(source)) {
             result = Math.min(result, CWFConfig.MAX_DAMAGE_PER_HIT.get().floatValue());
         }
         return result;

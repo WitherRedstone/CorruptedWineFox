@@ -663,6 +663,11 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
     }
 
     @Override
+    protected boolean shouldApplyDamageCap() {
+        return !this.isClone;
+    }
+
+    @Override
     protected float getBossBarProgress() {
         float max = getConfiguredMaxHealth();
         if (!CWFConfig.USE_PHASE_BARS.get()) {
@@ -745,7 +750,16 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
             serverLevel.sendParticles(ParticleTypes.SOUL, this.getX(), this.getY() + 1.0D, this.getZ(),
                     80, 0.6D, 1.2D, 0.6D, 0.05D);
         }
+        this.discardAllClones();
         super.die(source);
+    }
+
+    @Override
+    public void remove(Entity.RemovalReason reason) {
+        if (!this.isClone) {
+            this.discardAllClones();
+        }
+        super.remove(reason);
     }
 
     private void discardAllClones() {
@@ -767,10 +781,18 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
 
     private void ensurePermanentResistance() {
         MobEffectInstance current = this.getEffect(MobEffects.DAMAGE_RESISTANCE);
-        if (current != null && current.isInfiniteDuration() && current.getAmplifier() >= 1) {
+        boolean valid = current != null
+                && current.isInfiniteDuration()
+                && current.getAmplifier() >= 1
+                && current.isVisible()
+                && current.showIcon();
+        if (valid) {
             return;
         }
-        this.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, -1, 1, false, false, true));
+        if (current != null) {
+            this.removeEffect(MobEffects.DAMAGE_RESISTANCE);
+        }
+        this.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, -1, 1, false, true, true));
     }
 
     @Override

@@ -11,4 +11,10 @@ public class CorruptedWineFoxBossRenderer extends GeoEntityRenderer<CorruptedWin
         this.withScale(0.7F);
         this.shadowRadius = 0.5F;
     }
+
+    @Override
+    protected float getDeathMaxRotation(CorruptedWineFoxBossEntity animatable) {
+        // 死亡倒地由 GeckoLib 的 death 动画负责，关闭原版整体 90° 翻转。
+        return 0.0F;
+    }
 }
