@@ -1,0 +1,8 @@
+{
+  "entity.corrupted_wine_fox.corrupted_wine_fox": "黑化酒狐",
+  "item.corrupted_wine_fox.corrupted_wine_fox_spawn_egg": "黑化酒狐刷怪蛋",
+  "boss.corrupted_wine_fox_boss.phase.first": "第一阶段",
+  "boss.corrupted_wine_fox_boss.phase.second": "第二阶段",
+  "boss.corrupted_wine_fox_boss.phase.transitioning": "黑化中",
+  "boss.corrupted_wine_fox_boss.phase.final": "最终阶段"
+}

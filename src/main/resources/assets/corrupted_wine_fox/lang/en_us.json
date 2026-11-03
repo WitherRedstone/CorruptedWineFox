@@ -1,0 +1,8 @@
+{
+  "entity.corrupted_wine_fox.corrupted_wine_fox": "Corrupted Wine Fox",
+  "item.corrupted_wine_fox.corrupted_wine_fox_spawn_egg": "Corrupted Wine Fox Spawn Egg",
+  "boss.corrupted_wine_fox_boss.phase.first": "First Phase",
+  "boss.corrupted_wine_fox_boss.phase.second": "Second Phase",
+  "boss.corrupted_wine_fox_boss.phase.transitioning": "Transforming",
+  "boss.corrupted_wine_fox_boss.phase.final": "Final Phase"
+}
