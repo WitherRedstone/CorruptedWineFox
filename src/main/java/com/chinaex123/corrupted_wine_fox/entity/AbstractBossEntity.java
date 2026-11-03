@@ -45,7 +45,7 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
     protected static final RawAnimation DEATH_ANIMATION = RawAnimation.begin().thenPlayAndHold("death");
 
     /** 出场动画持续 tick */
-    protected static final int SPAWN_TICKS = 100;
+    protected static final int SPAWN_TICKS = 80;
 
     public final ServerBossEvent bossEvent = new ServerBossEvent(Component.empty(), BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.PROGRESS);
 
