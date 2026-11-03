@@ -396,6 +396,7 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
     }
 
     private void tickThirdPhase() {
+        this.ensurePermanentResistance();
         Player target = this.getTarget() instanceof Player player ? player
                 : this.level().getNearestPlayer(this, 32.0D);
         if (target == null) {
@@ -518,6 +519,9 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
             if (currentTarget != null) {
                 clone.setTarget(currentTarget);
             }
+            if (clone.getAttackGoal() != null) {
+                clone.getAttackGoal().setHealSpells(List.of());
+            }
             serverLevel.sendParticles(ParticleTypes.REVERSE_PORTAL, x, y + 1.0D, z, 24, 0.4D, 0.8D, 0.4D, 0.1D);
             this.activeClones.add(clone.getUUID());
         }
@@ -564,25 +568,28 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
     }
 
     private boolean tryMirrorTheft(Player target) {
-        List<Holder<MobEffect>> candidates = new ArrayList<>(List.of(
-                MobEffects.MOVEMENT_SPEED,
-                MobEffects.DAMAGE_BOOST,
-                MobEffects.DAMAGE_RESISTANCE,
-                MobEffects.REGENERATION,
-                MobEffects.DIG_SPEED,
-                MobEffects.ABSORPTION,
-                MobEffects.FIRE_RESISTANCE,
-                MobEffects.JUMP));
-        Collections.shuffle(candidates, new java.util.Random(this.random.nextLong()));
-
-        for (Holder<MobEffect> holder : candidates) {
-            MobEffectInstance stolen = target.getEffect(holder);
-            if (stolen == null) {
+        List<MobEffectInstance> candidates = new ArrayList<>();
+        for (MobEffectInstance effect : target.getActiveEffects()) {
+            MobEffect mobEffect = effect.getEffect().value();
+            if (!mobEffect.isBeneficial() || mobEffect.isInstantenous() || effect.getDuration() <= 0) {
                 continue;
             }
-            target.removeEffect(holder);
+            candidates.add(effect);
+        }
+        Collections.shuffle(candidates, new java.util.Random(this.random.nextLong()));
+
+        for (MobEffectInstance stolen : candidates) {
+            Holder<MobEffect> holder = stolen.getEffect();
+            MobEffectInstance existing = this.getEffect(holder);
+            if (existing != null && existing.isInfiniteDuration()) {
+                continue;
+            }
             int duration = Mth.randomBetweenInclusive(this.random, 600, 1200);
-            int amplifier = Mth.randomBetweenInclusive(this.random, 0, Math.max(0, stolen.getAmplifier()));
+            int amplifier = stolen.getAmplifier();
+            if (existing != null) {
+                amplifier = Math.max(amplifier, existing.getAmplifier());
+            }
+            target.removeEffect(holder);
             this.addEffect(new MobEffectInstance(holder, duration, amplifier, false, true, true));
             if (this.level() instanceof ServerLevel serverLevel) {
                 serverLevel.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, this.getX(), this.getY() + 1.2D, this.getZ(),
@@ -652,7 +659,7 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
     }
 
     public boolean wantsHealSpell() {
-        return this.getHealth() <= CWFConfig.LOW_HEALTH_THRESHOLD.get().floatValue();
+        return !this.isClone && this.getHealth() <= CWFConfig.LOW_HEALTH_THRESHOLD.get().floatValue();
     }
 
     @Override
@@ -758,6 +765,14 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
         this.activeClones.clear();
     }
 
+    private void ensurePermanentResistance() {
+        MobEffectInstance current = this.getEffect(MobEffects.DAMAGE_RESISTANCE);
+        if (current != null && current.isInfiniteDuration() && current.getAmplifier() >= 1) {
+            return;
+        }
+        this.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, -1, 1, false, false, true));
+    }
+
     @Override
     protected void onPhaseChanged(int oldPhase, int newPhase) {
         if (this.level().isClientSide) {
@@ -799,7 +814,7 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
             this.bossEvent.setOverlay(BossEvent.BossBarOverlay.NOTCHED_10);
             this.registerThirdPhaseGoals();
             this.serverTriggerAnimation("");
-            this.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, -1, 1, false, false, false));
+            this.ensurePermanentResistance();
             if (oldPhase == Phases.Transitioning.ordinal()) {
                 this.playSound(SoundEvents.WITHER_SPAWN, 2.0F, 0.7F);
                 if (this.level() instanceof ServerLevel serverLevel) {
@@ -883,7 +898,7 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
                 this.bossEvent.setColor(BossEvent.BossBarColor.YELLOW);
                 this.bossEvent.setOverlay(BossEvent.BossBarOverlay.NOTCHED_10);
                 this.registerThirdPhaseGoals();
-                this.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, -1, 1, false, false, false));
+                this.ensurePermanentResistance();
             }
             default -> {
                 this.bossEvent.setColor(BossEvent.BossBarColor.BLUE);

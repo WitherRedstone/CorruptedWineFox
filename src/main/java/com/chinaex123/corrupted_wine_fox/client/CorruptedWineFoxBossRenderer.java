@@ -9,6 +9,6 @@ public class CorruptedWineFoxBossRenderer extends GeoEntityRenderer<CorruptedWin
     public CorruptedWineFoxBossRenderer(EntityRendererProvider.Context context) {
         super(context, new CorruptedWineFoxBossGeoModel());
         this.withScale(0.7F);
-        this.shadowRadius = 1.2F;
+        this.shadowRadius = 0.5F;
     }
 }

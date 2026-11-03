@@ -17,11 +17,13 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.BossEvent;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
+import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -37,11 +39,13 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
     protected static final RawAnimation IDLE_ANIMATION = RawAnimation.begin().thenLoop("idle");
     protected static final RawAnimation WALK_ANIMATION = RawAnimation.begin().thenLoop("walk");
     protected static final RawAnimation RUN_ANIMATION = RawAnimation.begin().thenLoop("run");
+    protected static final RawAnimation SWIM_ANIMATION = RawAnimation.begin().thenLoop("swim");
+    protected static final RawAnimation SWIM_STAND_ANIMATION = RawAnimation.begin().thenLoop("swim_stand");
     protected static final RawAnimation ATTACKED_ANIMATION = RawAnimation.begin().thenPlay("attacked");
     protected static final RawAnimation DEATH_ANIMATION = RawAnimation.begin().thenPlayAndHold("death");
 
     /** 出场动画持续 tick */
-    protected static final int SPAWN_TICKS = 80;
+    protected static final int SPAWN_TICKS = 100;
 
     public final ServerBossEvent bossEvent = new ServerBossEvent(Component.empty(), BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.PROGRESS);
 
@@ -102,6 +106,9 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
         }
         if (this.getPhase() == Phases.Transitioning.ordinal()) {
             return PlayState.STOP;
+        }
+        if (this.isInWater()) {
+            return state.setAndContinue(this.isUnderWater() ? SWIM_ANIMATION : SWIM_STAND_ANIMATION);
         }
         double horizontalSpeed = this.getDeltaMovement().horizontalDistanceSqr();
         if (horizontalSpeed > 0.02D) {
@@ -229,9 +236,9 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
     }
 
     protected void clearGoals() {
-        this.goalSelector.getAvailableGoals().forEach(wrappedGoal -> wrappedGoal.stop());
+        this.goalSelector.getAvailableGoals().forEach(WrappedGoal::stop);
         this.goalSelector.removeAllGoals(goal -> true);
-        this.targetSelector.getAvailableGoals().forEach(wrappedGoal -> wrappedGoal.stop());
+        this.targetSelector.getAvailableGoals().forEach(WrappedGoal::stop);
         this.targetSelector.removeAllGoals(goal -> true);
     }
 
@@ -313,21 +320,39 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
         return this.getHealth() / this.getMaxHealth();
     }
 
+    private static boolean ignoresBossProtection(DamageSource source) {
+        return source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)
+                || source.is(DamageTypes.GENERIC_KILL)
+                || source.is(DamageTypes.FELL_OUT_OF_WORLD);
+    }
+
     @Override
     public boolean hurt(DamageSource source, float amount) {
-        if (this.getPhase() == Phases.Transitioning.ordinal() && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+        if (this.getPhase() == Phases.Transitioning.ordinal() && !ignoresBossProtection(source)) {
             return false;
         }
-        if (source.is(DamageTypeTags.IS_PROJECTILE) && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+        if (source.is(DamageTypeTags.IS_PROJECTILE) && !ignoresBossProtection(source)) {
             return false;
         }
         return super.hurt(source, amount);
     }
 
     @Override
+    public boolean isInvulnerableTo(DamageSource source) {
+        return !ignoresBossProtection(source) && super.isInvulnerableTo(source);
+    }
+
+    @Override
+    protected void onBelowWorld() {
+        if (!this.level().isClientSide) {
+            this.kill();
+        }
+    }
+
+    @Override
     protected float getDamageAfterArmorAbsorb(DamageSource source, float damage) {
         float result = super.getDamageAfterArmorAbsorb(source, damage);
-        if (CWFConfig.ENABLE_DAMAGE_CAP.get() && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+        if (CWFConfig.ENABLE_DAMAGE_CAP.get() && !ignoresBossProtection(source)) {
             result = Math.min(result, CWFConfig.MAX_DAMAGE_PER_HIT.get().floatValue());
         }
         return result;
