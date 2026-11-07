@@ -1,10 +1,10 @@
 package com.chinaex123.corrupted_wine_fox.client;
 
 import com.chinaex123.corrupted_wine_fox.entity.CorruptedWineFoxBossEntity;
+import io.redspace.ironsspellbooks.entity.mobs.HumanoidRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import software.bernie.geckolib.renderer.GeoEntityRenderer;
 
-public class CorruptedWineFoxBossRenderer extends GeoEntityRenderer<CorruptedWineFoxBossEntity> {
+public class CorruptedWineFoxBossRenderer extends HumanoidRenderer<CorruptedWineFoxBossEntity> {
 
     public CorruptedWineFoxBossRenderer(EntityRendererProvider.Context context) {
         super(context, new CorruptedWineFoxBossGeoModel());
@@ -14,7 +14,6 @@ public class CorruptedWineFoxBossRenderer extends GeoEntityRenderer<CorruptedWin
 
     @Override
     protected float getDeathMaxRotation(CorruptedWineFoxBossEntity animatable) {
-        // 死亡倒地由 GeckoLib 的 death 动画负责，关闭原版整体 90° 翻转。
         return 0.0F;
     }
 }

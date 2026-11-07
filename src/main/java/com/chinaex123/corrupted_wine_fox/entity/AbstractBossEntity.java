@@ -194,8 +194,7 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
             }
             return PlayState.CONTINUE;
         }
-        return this.transitionController.getAnimationState() == AnimationController.State.STOPPED ? PlayState.CONTINUE
-                : PlayState.STOP;
+        return PlayState.STOP;
     }
 
     @Override

@@ -6,6 +6,7 @@ import com.chinaex123.corrupted_wine_fox.entity.ai.CorruptedWineFoxBossAttackGoa
 import com.chinaex123.corrupted_wine_fox.init.CWFEntities;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
+import io.redspace.ironsspellbooks.registries.ItemRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.SpellData;
 import io.redspace.ironsspellbooks.entity.mobs.goals.PatrolNearLocationGoal;
@@ -38,6 +39,7 @@ import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.phys.Vec3;
@@ -69,23 +71,23 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
     private static final int TRANSITION_TIME = 200;
 
     private static final List<AttackAnimationData> FIRST_PHASE_MOVESET = List.of(
-            new AttackAnimationData(9, "attack", 6),
-            new AttackAnimationData(10, "attack", 7),
-            new AttackAnimationData(21, "attack", 14));
+            new AttackAnimationData(9, "simple_sword_upward_swipe", 6),
+            new AttackAnimationData(10, "simple_sword_horizontal_cross_swipe", 7),
+            new AttackAnimationData(21, "simple_sword_downstrike", 14));
 
     private static final List<AttackAnimationData> SECOND_PHASE_MOVESET = List.of(
-            new AttackAnimationData(9, "attack", 6),
-            new AttackAnimationData(8, "attack", 4),
-            new AttackAnimationData(10, "attack", 7),
-            new AttackAnimationData(21, "attack", 14));
+            new AttackAnimationData(9, "simple_sword_upward_swipe", 6),
+            new AttackAnimationData(8, "simple_sword_lunge_stab", 4),
+            new AttackAnimationData(10, "simple_sword_horizontal_cross_swipe", 7),
+            new AttackAnimationData(21, "simple_sword_downstrike", 14));
 
     private static final List<AttackAnimationData> THIRD_PHASE_MOVESET = List.of(
-            new AttackAnimationData(9, "attack", 6),
-            new AttackAnimationData(8, "attack", 4),
-            new AttackAnimationData(10, "attack", 7),
-            new AttackAnimationData(26, "attack", 13),
-            new AttackAnimationData(43, "attack", 12, 30),
-            new AttackAnimationData(48, "attack", 30));
+            new AttackAnimationData(9, "simple_sword_upward_swipe", 6),
+            new AttackAnimationData(8, "simple_sword_lunge_stab", 4),
+            new AttackAnimationData(10, "simple_sword_horizontal_cross_swipe", 7),
+            new AttackAnimationData(26, "sword_single_upward", 13),
+            new AttackAnimationData(43, "sword_double_slash", 12, 30),
+            new AttackAnimationData(48, "dead_king_slam", 30));
 
     private static final String BOSS_TEAM_NAME = "corrupted_wine_fox_boss_family";
 
@@ -736,7 +738,13 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
         if (!this.level().isClientSide) {
             this.applyConfiguredHealth();
             this.joinBossTeam();
+            this.equipStaff();
         }
+    }
+
+    private void equipStaff() {
+        this.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(ItemRegistry.PYRIUM_STAFF.get()));
+        this.setDropChance(EquipmentSlot.MAINHAND, 0.0F);
     }
 
     private void joinBossTeam() {
