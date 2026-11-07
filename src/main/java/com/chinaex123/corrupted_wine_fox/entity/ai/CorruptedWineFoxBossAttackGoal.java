@@ -23,6 +23,8 @@ public class CorruptedWineFoxBossAttackGoal extends WarlockAttackGoal {
 
     /** 近战判定距离。比实体自身的交互距离大一些，手感上"够得着" */
     private static final float MELEE_RANGE = 4.0F;
+    /** 贴脸距离：这个距离内不再让施法概率压过近战 */
+    private static final float POINT_BLANK_RANGE = 2.5F;
     /** 命中帧发生时的前冲力度 */
     private static final float LUNGE_POWER = 0.45F;
     /** 命中判定的距离宽容倍率 */
@@ -184,6 +186,9 @@ public class CorruptedWineFoxBossAttackGoal extends WarlockAttackGoal {
         }
 
         if (this.attackCooldown > 0) {
+            if (distanceSqr <= (double) (POINT_BLANK_RANGE * POINT_BLANK_RANGE) && this.attackCooldown > 5) {
+                this.attackCooldown = 5;
+            }
             --this.attackCooldown;
             return;
         }
@@ -191,7 +196,8 @@ public class CorruptedWineFoxBossAttackGoal extends WarlockAttackGoal {
         float range = this.meleeRange();
         boolean inMeleeRange = distanceSqr <= (double) (range * range)
                 && Utils.hasLineOfSight(this.boss.level(), this.boss, target, true);
-        boolean preferMelee = this.boss.getRandom().nextFloat() < this.meleeChance;
+        boolean pointBlank = distanceSqr <= (double) (POINT_BLANK_RANGE * POINT_BLANK_RANGE);
+        boolean preferMelee = pointBlank || this.boss.getRandom().nextFloat() < this.meleeChance;
 
         if (inMeleeRange && preferMelee) {
             this.doMeleeAction();

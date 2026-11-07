@@ -20,6 +20,8 @@ public class CWFConfig {
     public static final ModConfigSpec.IntValue SHADOWSTEP_COOLDOWN;
     public static final ModConfigSpec.IntValue MIRROR_THEFT_COOLDOWN;
     public static final ModConfigSpec.IntValue LIFE_DRAIN_COOLDOWN;
+    public static final ModConfigSpec.DoubleValue PHASE_THREE_LIFESTEAL_HEARTS;
+    public static final ModConfigSpec.IntValue PHASE_THREE_LIFESTEAL_COOLDOWN;
     public static final ModConfigSpec.IntValue HEAL_COOLDOWN;
     public static final ModConfigSpec.DoubleValue CLONE_MAX_HEALTH;
     public static final ModConfigSpec.DoubleValue CLONE_ATTACK_DAMAGE;
@@ -109,6 +111,14 @@ public class CWFConfig {
                 .comment("三阶段生命汲取的冷却（tick）")
                 .comment("Life drain cooldown in phase 3 (ticks)")
                 .defineInRange("lifeDrainCooldown", 120, 0, Integer.MAX_VALUE);
+        PHASE_THREE_LIFESTEAL_HEARTS = builder
+                .comment("三阶段近战命中时恢复的心数")
+                .comment("Hearts restored per melee hit in phase 3")
+                .defineInRange("phaseThreeLifestealHearts", 1.0D, 0.0D, Integer.MAX_VALUE);
+        PHASE_THREE_LIFESTEAL_COOLDOWN = builder
+                .comment("三阶段近战吸血的冷却（秒）")
+                .comment("Lifesteal cooldown after a melee hit in phase 3 (seconds)")
+                .defineInRange("phaseThreeLifestealCooldown", 2, 0, Integer.MAX_VALUE);
         builder.pop();
 
         SPEC = builder.build();

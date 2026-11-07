@@ -19,7 +19,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.BossEvent;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
@@ -44,6 +43,7 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.function.Supplier;
@@ -97,6 +97,7 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
     private int shadowstepCooldown;
     private int mirrorTheftCooldown;
     private int lifeDrainCooldown;
+    private int lifestealCooldown;
     private int adaptationTicks;
     private String adaptationSignature = "";
     private String lastDamageSignature = "";
@@ -184,7 +185,7 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
                         SpellRegistry.BLIGHT_SPELL, // 枯萎术
                         SpellRegistry.ROOT_SPELL    // 纠缠根须
                 ),
-                0.45F, 40, 70);
+                0.75F, 40, 70);
         this.goalSelector.addGoal(2, this.attackGoal);
         this.goalSelector.addGoal(6, new PatrolNearLocationGoal(this, 32.0F, 0.9D));
         this.goalSelector.addGoal(7, new LookAtPlayerGoal(this, Player.class, 8.0F));
@@ -369,6 +370,9 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
         if (this.lifeDrainCooldown > 0) {
             this.lifeDrainCooldown--;
         }
+        if (this.lifestealCooldown > 0) {
+            this.lifestealCooldown--;
+        }
     }
 
     private void tickClone() {
@@ -453,12 +457,19 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
     }
 
     public void onMeleeHit(LivingEntity target) {
-        if (this.getPhase() == Phases.ThirdPhase.ordinal() && !this.level().isClientSide) {
-            this.heal(2.0F);
-            if (this.level() instanceof ServerLevel serverLevel) {
-                serverLevel.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, target.getX(), target.getY() + 1.0D,
-                        target.getZ(), 8, 0.3D, 0.5D, 0.3D, 0.02D);
-            }
+        if (this.getPhase() != Phases.ThirdPhase.ordinal() || this.level().isClientSide
+                || this.lifestealCooldown > 0) {
+            return;
+        }
+        float hearts = CWFConfig.PHASE_THREE_LIFESTEAL_HEARTS.get().floatValue();
+        if (hearts <= 0.0F || this.getHealth() >= this.getMaxHealth()) {
+            return;
+        }
+        this.heal(hearts * 2.0F);
+        this.lifestealCooldown = CWFConfig.PHASE_THREE_LIFESTEAL_COOLDOWN.get() * 20;
+        if (this.level() instanceof ServerLevel serverLevel) {
+            serverLevel.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, target.getX(), target.getY() + 1.0D,
+                    target.getZ(), 8, 0.3D, 0.5D, 0.3D, 0.02D);
         }
     }
 
@@ -499,7 +510,7 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
             setBaseValue(clone, Attributes.MOVEMENT_SPEED, 0.3D);
             clone.setHealth(CWFConfig.CLONE_MAX_HEALTH.get().floatValue());
 
-            double angle = (Math.PI * 2.0D / Math.max(1, count)) * index + this.random.nextDouble() * 0.7D;
+            double angle = (Math.PI * 2.0D / count) * index + this.random.nextDouble() * 0.7D;
             double radius = 3.5D + this.random.nextDouble() * 1.5D;
             double x = this.getX() + Math.cos(angle) * radius;
             double z = this.getZ() + Math.sin(angle) * radius;
@@ -715,7 +726,7 @@ public class CorruptedWineFoxBossEntity extends AbstractBossEntity {
     }
 
     @Override
-    protected PathNavigation createNavigation(Level level) {
+    protected @NotNull PathNavigation createNavigation(Level level) {
         return new NotIdioticNavigation(this, level);
     }
 
