@@ -1,6 +1,7 @@
 package com.chinaex123.corrupted_wine_fox.entity;
 
 import com.chinaex123.corrupted_wine_fox.config.CWFConfig;
+import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.entity.mobs.IAnimatedAttacker;
 import io.redspace.ironsspellbooks.entity.mobs.abstract_spell_casting_mob.AbstractSpellCastingMob;
 import net.minecraft.core.Holder;
@@ -34,6 +35,7 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
 
     private static final EntityDataAccessor<Integer> DATA_PHASE = SynchedEntityData.defineId(AbstractBossEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_SPAWN_TIMER = SynchedEntityData.defineId(AbstractBossEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> DATA_CASTING = SynchedEntityData.defineId(AbstractBossEntity.class, EntityDataSerializers.BOOLEAN);
     protected static final RawAnimation TRANSITION_ANIMATION = RawAnimation.begin().thenPlay("phase_transition");
     protected static final RawAnimation SPAWN_ANIMATION = RawAnimation.begin().thenPlay("spawn");
     protected static final RawAnimation IDLE_ANIMATION = RawAnimation.begin().thenLoop("idle");
@@ -45,7 +47,6 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
     protected static final RawAnimation CAST_ANIMATION = RawAnimation.begin().thenPlayAndHold("cast");
     protected static final RawAnimation DEATH_ANIMATION = RawAnimation.begin().thenPlayAndHold("death");
 
-    /** 出场动画持续 tick */
     protected static final int SPAWN_TICKS = 80;
 
     public final ServerBossEvent bossEvent = new ServerBossEvent(Component.empty(), BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.PROGRESS);
@@ -61,6 +62,7 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
     private int spawnTimer;
     protected RawAnimation animationToPlay;
     private int clientAttackAnimationLength;
+    private int castVisualTicks;
     private boolean stopClientAnimation;
 
     protected AbstractBossEntity(EntityType<? extends AbstractBossEntity> type, Level level) {
@@ -99,7 +101,7 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         super.registerControllers(controllers);
-        controllers.add(this.locomotionController, this.castController, this.hurtController, this.meleeController,
+        controllers.add(this.locomotionController, this.hurtController, this.meleeController, this.castController,
                 this.transitionController, this.spawnController, this.deathController);
     }
 
@@ -186,7 +188,6 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
             this.animationToPlay = null;
             return PlayState.CONTINUE;
         }
-        // 动作播完就停下，交还控制权给待机/走路动画，否则会一直僵在最后一帧
         if (this.clientAttackAnimationLength > 0) {
             if (state.getAnimationTick() >= this.clientAttackAnimationLength) {
                 this.clientAttackAnimationLength = 0;
@@ -214,7 +215,6 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
             animationName = animationName.substring(0, separator);
         }
         if (animationName.isEmpty()) {
-            // 空动画名 = 服务端要求中断当前动作（例如目标跑出攻击范围）
             this.animationToPlay = null;
             this.clientAttackAnimationLength = 0;
             this.stopClientAnimation = true;
@@ -260,6 +260,7 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
         super.defineSynchedData(builder);
         builder.define(DATA_PHASE, 0);
         builder.define(DATA_SPAWN_TIMER, 0);
+        builder.define(DATA_CASTING, false);
     }
 
     @Override
@@ -295,6 +296,32 @@ public abstract class AbstractBossEntity extends AbstractSpellCastingMob impleme
         }
         if (this.showsBossBar()) {
             this.bossEvent.setProgress(this.getBossBarProgress());
+        }
+        if (this.isCasting()) {
+            this.entityData.set(DATA_CASTING, true);
+            this.castVisualTicks = 20;
+        } else if (this.castVisualTicks > 0) {
+            this.castVisualTicks--;
+        } else if (this.entityData.get(DATA_CASTING)) {
+            this.entityData.set(DATA_CASTING, false);
+        }
+    }
+
+    @Override
+    public void initiateCastSpell(AbstractSpell spell, int spellLevel) {
+        super.initiateCastSpell(spell, spellLevel);
+        if (!this.level().isClientSide) {
+            this.entityData.set(DATA_CASTING, true);
+            this.castVisualTicks = 20;
+        }
+    }
+
+    @Override
+    public void cancelCast() {
+        super.cancelCast();
+        if (!this.level().isClientSide) {
+            this.castVisualTicks = 0;
+            this.entityData.set(DATA_CASTING, false);
         }
     }
 
